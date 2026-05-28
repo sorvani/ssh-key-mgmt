@@ -173,11 +173,19 @@ $sshOpts = @(
   '-o', 'StrictHostKeyChecking=accept-new'
 )
 
+# ssh writes to stderr for benign things too (e.g. the accept-new host-key
+# warning on first contact). With 2>&1 capture, a script-wide 'Stop' would
+# wrap that stderr in a terminating NativeCommandError and abort the loop, so
+# we relax to 'Continue' here and rely on $LASTEXITCODE to judge each host.
+$ErrorActionPreference = 'Continue'
+
 $results = foreach ($h in $hosts) {
   Write-Host ("Syncing {0,-22}" -f $h) -NoNewline
   $output = & ssh @sshOpts $h $remoteCmd 2>&1
   $code   = $LASTEXITCODE
-  $text   = ($output | Out-String).Trim()
+  # Captured stderr arrives as ErrorRecord objects; .ToString() gives the raw
+  # ssh line without PowerShell's NativeCommandError call-site decoration.
+  $text   = (@($output | ForEach-Object { $_.ToString() }) -join ' ').Trim()
 
   $status =
     if     ($code -eq 0)                                   { 'OK' }

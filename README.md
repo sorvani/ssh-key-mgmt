@@ -128,17 +128,26 @@ The new machine can log in everywhere as soon as the sync reaches each host.
 
 ## Auditing / spotting drift
 
-`audit-host.ps1` is read-only — it fetches one host's live `authorized_keys`
-and diffs the key material against the canonical file:
+`audit-host.ps1` is read-only — it fetches each selected host's live
+`authorized_keys` and diffs the key material (by SHA256 fingerprint) against
+the canonical file. It takes the **same host selection as `sync-keys.ps1`**:
+positional/`-Only` and `-Exclude` wildcards, `-Jump`, and the same skip-list.
 
 ```powershell
-.\audit-host.ps1 <host-alias>
+.\audit-host.ps1 <host-alias>        # one host: full per-key table
+.\audit-host.ps1 daerma-*            # many hosts: per-host summary
+.\audit-host.ps1 -Jump jump-fsl      # a jump box + everything behind it
+.\audit-host.ps1                     # the whole fleet
+.\audit-host.ps1 daerma-* -Detailed  # force the per-key table for every host
 ```
 
 Per-key status: `OK` (in both), `MISSING` (in canonical, not on host — host is
-behind), `STALE` (on host, not in canonical — a sync would remove it). Use
-this to verify a retirement actually propagated, or to inspect a host before
-syncing.
+behind), `STALE` (on host, not in canonical — a sync would remove it). Per
+host: `IN_SYNC` / `DRIFT`, or `NO_KEY_AUTH` / `UNREACHABLE` / `ERROR` if it
+can't be read (unreadable hosts are reported, not fatal — the run continues).
+A single host prints the full per-key table; multiple hosts print a summary
+plus a fleet rollup and a ready-to-run `sync-keys.ps1 -Only …` for the drifted
+hosts. Use it to verify a retirement propagated, or to scope a sync.
 
 ## Comment convention
 
