@@ -1,0 +1,12 @@
+# Template for skip-patterns.local (which is gitignored).
+#
+# Copy this file to `skip-patterns.local` and fill in the real host aliases /
+# patterns you don't want sync-keys.ps1 to touch. The .local file is never
+# committed, so real infrastructure names stay out of git history.
+#
+# Format: one -like wildcard pattern per line. '#' starts a comment.
+# A host alias from ~/.ssh/config is skipped if it matches ANY pattern.
+
+# *router*        # all network gear (no POSIX authorized_keys)
+# <git-host>      # e.g. your gitlab/github ssh alias
+# <appliance>     # NAS / appliance managed a different way

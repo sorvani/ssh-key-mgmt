@@ -1,0 +1,23 @@
+# =====================================================================
+# Canonical authorized_keys — single source of truth
+# =====================================================================
+# Every `sync-keys.ps1` push REPLACES the remote ~/.ssh/authorized_keys
+# with the exact contents of this file. To retire a key, delete its line
+# here and re-sync; it disappears everywhere on the next push.
+#
+# Comment convention (3rd field on each key line):
+#   <user>@<device-context>   e.g. jbusch@win-workstation
+# Keep it human-readable — it's what you'll read when auditing drift.
+#
+# Lines starting with '#' and blank lines are ignored by sshd.
+# These are PUBLIC keys only. Never put a private key in this file.
+# ---------------------------------------------------------------------
+
+# --- jbusch primary keys -------------------------------------------
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG+nJM1Ib5SIPezrJytHgxCVZWIk2fOzZQy/wgLq3Za3 jbusch@primary-desktop-2026
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuWxcEfUbxnG94/SYYrcd/lQYOCdc+S6nsq64hM3Spw jbusch@dev-laptop-2026
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID0dWjm1EyabPfLQcbWtQnNuL4mH08RoeGzcvy8dPpr6 jbusch@personal-macbook-air-2021
+
+# --- add additional keys below -------------------------------------
+# (other workstations, laptop, backup key, etc.)
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP5EuS8fa4hMwOdgIe0+ImzLmcgcleW8rVJGPWkkY91M jbusch@wall-pc-2026

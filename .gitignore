@@ -1,0 +1,3 @@
+# Real host skip-list - may contain sensitive infrastructure aliases.
+# Use skip-patterns.example as the template; keep the real one local.
+skip-patterns.local
