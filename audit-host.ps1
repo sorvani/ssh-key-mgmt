@@ -231,7 +231,7 @@ $totalMissing = ($results | Measure-Object -Property Missing -Sum).Sum
 
 Write-Host ""
 Write-Host ("Audited {0} host(s): {1} in sync, {2} with drift, {3} unreachable/failed." -f `
-  $results.Count, $insync, $drift.Count, @($failed).Count) -ForegroundColor Cyan
+  @($results).Count, $insync, $drift.Count, @($failed).Count) -ForegroundColor Cyan
 if ($drift) {
   Write-Host ("Fleet drift: {0} stale key(s) a sync would remove, {1} missing key(s) it would add." -f `
     $totalStale, $totalMissing) -ForegroundColor Yellow
@@ -239,4 +239,12 @@ if ($drift) {
   Write-Host "  Converge with: .\sync-keys.ps1 -Only $names" -ForegroundColor Cyan
 } elseif (-not $failed) {
   Write-Host "No drift anywhere. Fleet matches canonical." -ForegroundColor Green
+}
+
+# NO_KEY_AUTH hosts are reachable but reject key auth -> first-time bootstrap
+# over password (the Windows-friendly ssh-copy-id replacement).
+$bootstrap = @($results | Where-Object Status -eq 'NO_KEY_AUTH')
+if ($bootstrap) {
+  Write-Host ("Needs bootstrap (password auth): {0}" -f (($bootstrap.Host) -join ', ')) -ForegroundColor Yellow
+  Write-Host ("  Run: .\sync-keys.ps1 -Interactive -Only {0}" -f (($bootstrap.Host) -join ',')) -ForegroundColor Cyan
 }

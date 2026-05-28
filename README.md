@@ -147,7 +147,10 @@ host: `IN_SYNC` / `DRIFT`, or `NO_KEY_AUTH` / `UNREACHABLE` / `ERROR` if it
 can't be read (unreadable hosts are reported, not fatal — the run continues).
 A single host prints the full per-key table; multiple hosts print a summary
 plus a fleet rollup and a ready-to-run `sync-keys.ps1 -Only …` for the drifted
-hosts. Use it to verify a retirement propagated, or to scope a sync.
+hosts. Any `NO_KEY_AUTH` hosts also get a ready-to-run
+`sync-keys.ps1 -Interactive -Only …` bootstrap line (the Windows `ssh-copy-id`
+replacement — see *Bootstrapping a NEW host* above). Use it to verify a
+retirement propagated, or to scope a sync.
 
 ## Comment convention
 
