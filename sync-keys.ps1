@@ -28,6 +28,22 @@
 .PARAMETER DryRun
   Print the resolved target list and exit without contacting any host.
 
+.PARAMETER Only
+  Sync only host aliases matching these patterns. Supports -like wildcards
+  (e.g. 'daerma-*'); an exact alias also works. Applied as a narrowing filter.
+
+.PARAMETER Exclude
+  Skip host aliases matching these patterns (in addition to the skip-list).
+  Supports -like wildcards.
+
+.PARAMETER Jump
+  Sync every host that routes through these jump boxes (i.e. whose ProxyJump
+  references them), PLUS the jump boxes themselves. Combine with -Exclude to
+  drop the jump box, or with -Only to further narrow within the group.
+
+.PARAMETER DryRun
+  Print the resolved target list and exit without contacting any host.
+
 .PARAMETER Interactive
   Allow password prompts (BatchMode=no) for first-time bootstrap on hosts
   that still accept password auth. Default is BatchMode=yes (fail fast).
@@ -35,7 +51,9 @@
 .EXAMPLE
   .\sync-keys.ps1 -DryRun
   .\sync-keys.ps1
-  .\sync-keys.ps1 -Interactive -Only <jump-box1>,<jump-box2>
+  .\sync-keys.ps1 -Only <client>-*            # all hosts named <client>-...
+  .\sync-keys.ps1 -Jump <jump-box>            # the jump box + everything behind it
+  .\sync-keys.ps1 -Jump <jump-box> -Exclude <jump-box>   # only what's behind it
 #>
 param(
   [string]   $KeysFile  = (Join-Path $PSScriptRoot 'canonical_authorized_keys'),
@@ -43,6 +61,7 @@ param(
   [string]   $SkipFile  = (Join-Path $PSScriptRoot 'skip-patterns.local'),
   [string[]] $Only,
   [string[]] $Exclude,
+  [string[]] $Jump,
   [switch]   $DryRun,
   [switch]   $Interactive
 )
@@ -96,10 +115,19 @@ $remoteCmd = @(
   'mv ~/.ssh/authorized_keys.new ~/.ssh/authorized_keys'
 ) -join ' && '
 
-# --- Discover hosts from ssh config ----------------------------------------
-$hosts = Select-String -Path $SshConfig -Pattern '^Host\s+(?!\*)(\S+)\s*$' |
-         ForEach-Object { $_.Matches[0].Groups[1].Value } |
-         Select-Object -Unique          # dedupe (a host may be defined twice)
+# --- Parse ssh config into (Host -> ProxyJump) so we can resolve -Jump ------
+$hostProxy = [ordered]@{}
+$curHost = $null
+foreach ($line in (Get-Content -Path $SshConfig)) {
+  if ($line -match '^\s*Host\s+(?!\*)(\S+)\s*$') {
+    $curHost = $Matches[1]
+    if (-not $hostProxy.Contains($curHost)) { $hostProxy[$curHost] = $null }
+  }
+  elseif ($curHost -and $line -match '^\s*ProxyJump\s+(.+?)\s*$') {
+    $hostProxy[$curHost] = $Matches[1]
+  }
+}
+$hosts = @($hostProxy.Keys)            # already deduped (a host may appear twice)
 
 # Built-in skip-list
 $hosts = $hosts | Where-Object {
@@ -107,8 +135,22 @@ $hosts = $hosts | Where-Object {
   -not ($SkipPatterns | Where-Object { $name -like $_ })
 }
 
-if ($Only)    { $hosts = $hosts | Where-Object { $Only    -contains $_ } }
-if ($Exclude) { $hosts = $hosts | Where-Object { $Exclude -notcontains $_ } }
+# -Jump: hosts whose ProxyJump routes through any named jump box, + the jump
+# boxes themselves. ProxyJump values may be 'user@host:port' or a 'a,b' chain.
+if ($Jump) {
+  $behind = foreach ($name in $hosts) {
+    $proxy = $hostProxy[$name]
+    if (-not $proxy) { continue }
+    $hops = $proxy -split ',' | ForEach-Object { (($_ -replace '.*@','') -replace ':.*','').Trim() }
+    if ($hops | Where-Object { $Jump -contains $_ }) { $name }
+  }
+  $jumpSet = @($behind) + @($Jump) | Select-Object -Unique
+  $hosts = $hosts | Where-Object { $jumpSet -contains $_ }
+}
+
+# -Only / -Exclude: wildcard (-like) patterns; exact names also match.
+if ($Only)    { $hosts = $hosts | Where-Object { $n = $_;       $Only    | Where-Object { $n -like $_ } } }
+if ($Exclude) { $hosts = $hosts | Where-Object { $n = $_; -not ($Exclude | Where-Object { $n -like $_ }) } }
 
 if (-not $hosts) {
   Write-Host "No target hosts after filtering. Nothing to do." -ForegroundColor Yellow

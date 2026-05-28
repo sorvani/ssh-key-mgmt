@@ -70,12 +70,23 @@ The run prints a status per host and a summary. Statuses:
 | `NO_BASE64`    | remote has no `base64` (e.g. not a normal Linux box)           |
 | `ERROR`        | other remote failure (see Detail column)                       |
 
-Scope a run with `-Only` / `-Exclude`:
+Scope a run with `-Only`, `-Exclude`, or `-Jump`:
 
 ```powershell
-.\sync-keys.ps1 -Only <jump-box>,<host-behind-jump>
-.\sync-keys.ps1 -Exclude <legacy-host>
+# -Only / -Exclude take -like wildcards (exact aliases also work)
+.\sync-keys.ps1 -Only <client>-*           # every host named <client>-...
+.\sync-keys.ps1 -Exclude *-pve*            # skip anything matching the pattern
+
+# -Jump selects a jump box AND every host that proxies through it
+.\sync-keys.ps1 -Jump <jump-box>                       # jump + everything behind it
+.\sync-keys.ps1 -Jump <jump-box> -Exclude <jump-box>   # only what's behind it
 ```
+
+`-Only`/`-Exclude`/`-Jump` combine as narrowing filters (e.g.
+`-Jump <jump-box> -Only *-pbs` = just the PBS hosts behind that jump). Note
+`-Jump` resolves membership from each host's `ProxyJump` line, so a host on the
+same network that's addressed directly (no `ProxyJump`) won't be included by
+`-Jump` — use a name wildcard with `-Only` to catch those.
 
 ## Retiring a key
 
