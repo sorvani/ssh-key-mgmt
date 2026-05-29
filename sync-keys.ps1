@@ -19,18 +19,10 @@
 .PARAMETER SshConfig
   Path to the ssh config to parse hosts from. Defaults to ~/.ssh/config.
 
-.PARAMETER Only
-  Sync only these host aliases (exact match).
-
-.PARAMETER Exclude
-  Skip these host aliases (in addition to the built-in skip-list).
-
-.PARAMETER DryRun
-  Print the resolved target list and exit without contacting any host.
-
-.PARAMETER Only
+.PARAMETER Include
   Sync only host aliases matching these patterns. Supports -like wildcards
   (e.g. 'daerma-*'); an exact alias also works. Applied as a narrowing filter.
+  (Alias: -Only, for backward compatibility.)
 
 .PARAMETER Exclude
   Skip host aliases matching these patterns (in addition to the skip-list).
@@ -39,7 +31,7 @@
 .PARAMETER Jump
   Sync every host that routes through these jump boxes (i.e. whose ProxyJump
   references them), PLUS the jump boxes themselves. Combine with -Exclude to
-  drop the jump box, or with -Only to further narrow within the group.
+  drop the jump box, or with -Include to further narrow within the group.
 
 .PARAMETER DryRun
   Print the resolved target list and exit without contacting any host.
@@ -51,7 +43,7 @@
 .EXAMPLE
   .\sync-keys.ps1 -DryRun
   .\sync-keys.ps1
-  .\sync-keys.ps1 -Only <client>-*            # all hosts named <client>-...
+  .\sync-keys.ps1 -Include <client>-*         # all hosts named <client>-...
   .\sync-keys.ps1 -Jump <jump-box>            # the jump box + everything behind it
   .\sync-keys.ps1 -Jump <jump-box> -Exclude <jump-box>   # only what's behind it
 #>
@@ -59,7 +51,8 @@ param(
   [string]   $KeysFile  = (Join-Path $PSScriptRoot 'canonical_authorized_keys'),
   [string]   $SshConfig = "$HOME\.ssh\config",
   [string]   $SkipFile  = (Join-Path $PSScriptRoot 'skip-patterns.local'),
-  [string[]] $Only,
+  [Alias('Only')]
+  [string[]] $Include,
   [string[]] $Exclude,
   [string[]] $Jump,
   [switch]   $DryRun,
@@ -148,8 +141,8 @@ if ($Jump) {
   $hosts = $hosts | Where-Object { $jumpSet -contains $_ }
 }
 
-# -Only / -Exclude: wildcard (-like) patterns; exact names also match.
-if ($Only)    { $hosts = $hosts | Where-Object { $n = $_;       $Only    | Where-Object { $n -like $_ } } }
+# -Include / -Exclude: wildcard (-like) patterns; exact names also match.
+if ($Include) { $hosts = $hosts | Where-Object { $n = $_;       $Include | Where-Object { $n -like $_ } } }
 if ($Exclude) { $hosts = $hosts | Where-Object { $n = $_; -not ($Exclude | Where-Object { $n -like $_ }) } }
 
 if (-not $hosts) {
@@ -226,5 +219,5 @@ $needsBootstrap = $results | Where-Object Status -eq 'NO_KEY_AUTH'
 if ($needsBootstrap) {
   Write-Host "`nThese hosts rejected key auth - likely need first-time bootstrap:" -ForegroundColor Yellow
   $needsBootstrap.Host | ForEach-Object { Write-Host "  $_" }
-  Write-Host ("`nBootstrap with: .\sync-keys.ps1 -Interactive -Only {0}" -f ($needsBootstrap.Host -join ',')) -ForegroundColor Cyan
+  Write-Host ("`nBootstrap with: .\sync-keys.ps1 -Interactive -Include {0}" -f ($needsBootstrap.Host -join ',')) -ForegroundColor Cyan
 }

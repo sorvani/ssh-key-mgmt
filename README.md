@@ -70,11 +70,11 @@ The run prints a status per host and a summary. Statuses:
 | `NO_BASE64`    | remote has no `base64` (e.g. not a normal Linux box)           |
 | `ERROR`        | other remote failure (see Detail column)                       |
 
-Scope a run with `-Only`, `-Exclude`, or `-Jump`:
+Scope a run with `-Include`, `-Exclude`, or `-Jump`:
 
 ```powershell
-# -Only / -Exclude take -like wildcards (exact aliases also work)
-.\sync-keys.ps1 -Only <client>-*           # every host named <client>-...
+# -Include / -Exclude take -like wildcards (exact aliases also work)
+.\sync-keys.ps1 -Include <client>-*           # every host named <client>-...
 .\sync-keys.ps1 -Exclude *-pve*            # skip anything matching the pattern
 
 # -Jump selects a jump box AND every host that proxies through it
@@ -82,11 +82,13 @@ Scope a run with `-Only`, `-Exclude`, or `-Jump`:
 .\sync-keys.ps1 -Jump <jump-box> -Exclude <jump-box>   # only what's behind it
 ```
 
-`-Only`/`-Exclude`/`-Jump` combine as narrowing filters (e.g.
-`-Jump <jump-box> -Only *-pbs` = just the PBS hosts behind that jump). Note
+`-Include`/`-Exclude`/`-Jump` combine as narrowing filters (e.g.
+`-Jump <jump-box> -Include *-pbs` = just the PBS hosts behind that jump). Note
 `-Jump` resolves membership from each host's `ProxyJump` line, so a host on the
 same network that's addressed directly (no `ProxyJump`) won't be included by
-`-Jump` — use a name wildcard with `-Only` to catch those.
+`-Jump` — use a name wildcard with `-Include` to catch those.
+
+`-Include` is also accepted as `-Only` (a backward-compatible alias).
 
 ## Retiring a key
 
@@ -103,7 +105,7 @@ box that still accept password auth — will report `NO_KEY_AUTH` on a normal
 run. Bootstrap them with `-Interactive` (allows the password prompt):
 
 ```powershell
-.\sync-keys.ps1 -Interactive -Only new-host-alias
+.\sync-keys.ps1 -Interactive -Include new-host-alias
 ```
 
 After the first successful push, key auth works and you never need
@@ -131,7 +133,7 @@ The new machine can log in everywhere as soon as the sync reaches each host.
 `audit-host.ps1` is read-only — it fetches each selected host's live
 `authorized_keys` and diffs the key material (by SHA256 fingerprint) against
 the canonical file. It takes the **same host selection as `sync-keys.ps1`**:
-positional/`-Only` and `-Exclude` wildcards, `-Jump`, and the same skip-list.
+positional/`-Include` and `-Exclude` wildcards, `-Jump`, and the same skip-list.
 
 ```powershell
 .\audit-host.ps1 <host-alias>        # one host: full per-key table
@@ -146,9 +148,9 @@ behind), `STALE` (on host, not in canonical — a sync would remove it). Per
 host: `IN_SYNC` / `DRIFT`, or `NO_KEY_AUTH` / `UNREACHABLE` / `ERROR` if it
 can't be read (unreadable hosts are reported, not fatal — the run continues).
 A single host prints the full per-key table; multiple hosts print a summary
-plus a fleet rollup and a ready-to-run `sync-keys.ps1 -Only …` for the drifted
+plus a fleet rollup and a ready-to-run `sync-keys.ps1 -Include …` for the drifted
 hosts. Any `NO_KEY_AUTH` hosts also get a ready-to-run
-`sync-keys.ps1 -Interactive -Only …` bootstrap line (the Windows `ssh-copy-id`
+`sync-keys.ps1 -Interactive -Include …` bootstrap line (the Windows `ssh-copy-id`
 replacement — see *Bootstrapping a NEW host* above). Use it to verify a
 retirement propagated, or to scope a sync.
 

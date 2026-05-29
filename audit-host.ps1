@@ -11,7 +11,7 @@
     STALE   - on the host but not in canonical (a sync would remove it)
     OK      - present in both
 
-  Host selection mirrors sync-keys.ps1: positional / -Only and -Exclude take
+  Host selection mirrors sync-keys.ps1: positional / -Include and -Exclude take
   -like wildcards, -Jump selects a jump box plus everything behind it, and the
   same untracked skip-patterns.local list is honored. With no selection, every
   host in the ssh config (minus the skip-list) is audited.
@@ -19,9 +19,10 @@
   Output: a single selected host shows the full per-key table; multiple hosts
   show a one-line-per-host summary (use -Detailed to expand every host).
 
-.PARAMETER Only
+.PARAMETER Include
   Audit only host aliases matching these patterns (-like wildcards; an exact
   alias also works). Positional, so: .\audit-host.ps1 daerma-*
+  (Alias: -Only, for backward compatibility.)
 
 .PARAMETER Exclude
   Skip host aliases matching these patterns (in addition to the skip-list).
@@ -45,7 +46,8 @@
 #>
 param(
   [Parameter(Position = 0)]
-  [string[]] $Only,
+  [Alias('Only')]
+  [string[]] $Include,
   [string[]] $Exclude,
   [string[]] $Jump,
   [switch]   $Detailed,
@@ -135,7 +137,7 @@ if ($Jump) {
   $hosts = $hosts | Where-Object { $jumpSet -contains $_ }
 }
 
-if ($Only)    { $hosts = $hosts | Where-Object { $n = $_;       $Only    | Where-Object { $n -like $_ } } }
+if ($Include) { $hosts = $hosts | Where-Object { $n = $_;       $Include | Where-Object { $n -like $_ } } }
 if ($Exclude) { $hosts = $hosts | Where-Object { $n = $_; -not ($Exclude | Where-Object { $n -like $_ }) } }
 
 $hosts = @($hosts)
@@ -236,7 +238,7 @@ if ($drift) {
   Write-Host ("Fleet drift: {0} stale key(s) a sync would remove, {1} missing key(s) it would add." -f `
     $totalStale, $totalMissing) -ForegroundColor Yellow
   $names = ($drift.Host) -join ','
-  Write-Host "  Converge with: .\sync-keys.ps1 -Only $names" -ForegroundColor Cyan
+  Write-Host "  Converge with: .\sync-keys.ps1 -Include $names" -ForegroundColor Cyan
 } elseif (-not $failed) {
   Write-Host "No drift anywhere. Fleet matches canonical." -ForegroundColor Green
 }
@@ -246,5 +248,5 @@ if ($drift) {
 $bootstrap = @($results | Where-Object Status -eq 'NO_KEY_AUTH')
 if ($bootstrap) {
   Write-Host ("Needs bootstrap (password auth): {0}" -f (($bootstrap.Host) -join ', ')) -ForegroundColor Yellow
-  Write-Host ("  Run: .\sync-keys.ps1 -Interactive -Only {0}" -f (($bootstrap.Host) -join ',')) -ForegroundColor Cyan
+  Write-Host ("  Run: .\sync-keys.ps1 -Interactive -Include {0}" -f (($bootstrap.Host) -join ',')) -ForegroundColor Cyan
 }
